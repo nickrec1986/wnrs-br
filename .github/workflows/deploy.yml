@@ -1,0 +1,50 @@
+# Publishes the Portuguese WNRS site (wnrs.com.br) from nickrec1986/wnrs.
+# Content edits belong in that repo. This workflow only builds and deploys.
+name: Deploy wnrs.com.br
+
+on:
+  push:
+    branches:
+      - main
+  workflow_dispatch:
+  schedule:
+    # Daily, off-hour, so merges to nickrec1986/wnrs propagate without a push here.
+    - cron: '23 9 * * *'
+
+permissions:
+  contents: read
+  pages: write
+  id-token: write
+
+concurrency:
+  group: pages
+  cancel-in-progress: false
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout Portuguese source
+        uses: actions/checkout@v4
+        with:
+          repository: nickrec1986/wnrs
+          ref: main
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: npm
+      - run: npm ci
+      - run: npm run build:br
+      - uses: actions/upload-pages-artifact@v3
+        with:
+          path: ./dist-br
+
+  deploy:
+    needs: build
+    runs-on: ubuntu-latest
+    environment:
+      name: github-pages
+      url: ${{ steps.deployment.outputs.page_url }}
+    steps:
+      - id: deployment
+        uses: actions/deploy-pages@v4
